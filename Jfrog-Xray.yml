@@ -1,0 +1,66 @@
+---
+- hosts: localhost
+  become: true
+  vars:
+    erlang_version: "23.3.1"
+  tasks:
+    # - name: Install OpenJDK
+    #   apt:
+    #     name: openjdk-11-jre-headless
+    #     state: present
+    - name: Install dependencies
+      apt:
+        name: [apt-transport-https, gnupg, wget]
+        state: latest
+
+    - name: Add Erlang Solutions GPG key
+      apt_key:
+        url: https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc
+
+    - name: Add Erlang Solutions repository
+      apt_repository:
+        repo: deb https://packages.erlang-solutions.com/ubuntu focal contrib
+        state: present
+
+    - name: Install ESL Erlang
+      apt:
+        name: esl-erlang
+        state: latest
+
+    - name: Install PostgreSQL
+      apt:
+        name: postgresql
+        state: present
+
+    - name: Add JFrog GPG key
+      apt_key:
+        url: https://releases.jfrog.io/artifactory/api/gpg/key/public
+        state: present
+        
+    - name: crate a directory
+      file:
+        path: "./jfrog-xray"
+        state: directory
+        mode: 0755
+
+    - name: Connect to website using a previously stored cookie
+      uri:
+        url: https://releases.jfrog.io/artifactory/jfrog-xray/xray-deb/3.69.3/jfrog-xray-3.69.3-deb.tar.gz
+        method: GET
+        dest: "./jfrog-xray/jfrog-xray-3.69.3-deb.tar.gz"
+        status_code: 200
+    
+    - name: shell to file
+      shell: tar -xf ./jfrog-xray/jfrog-xray-3.69.3-deb.tar.gz -C ./jfrog-xray/
+   
+
+    - name: Install a .deb package
+      apt:
+        deb: "./jfrog-xray/jfrog-xray-3.69.3-deb/xray/xray.deb"
+
+
+    # Start the JFrog Xray service
+    - name: Start JFrog Xray service
+      service:
+        name: jfrog-xray
+        state: started
